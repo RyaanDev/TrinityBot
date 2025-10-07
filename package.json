@@ -1,0 +1,21 @@
+{
+  "name": "trinitypakage",
+  "version": "0.0.1",
+  "description": "Bot Auxiliar Discord",
+  "main": "Index.js",
+  "scripts": {
+    "test": "/teste"
+  },
+  "repository": {
+    "type": "git",
+    "url": "Git_Trinity_Repository_First"
+  },
+  "keywords": [
+    "Ryaan.10000"
+  ],
+  "author": "Ryaan",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.12.2"
+  }
+}
