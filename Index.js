@@ -1,54 +1,22 @@
-const{Client, Events, GatewayIntentBits, SlashCommandBuilder,Collection,MessageFlags, Discord } = require(`discord.js`)
+const{Client, Events, GatewayIntentBits, SlashCommandBuilder,Collection,MessageFlags, Discord, NewsChannel } = require(`discord.js`)
 const path = require('node:path');
 const fs = require('node:fs');
-const { File } = require('node:buffer');
-
+const{idSuggestion} = require('./config.json');
 require('dotenv').config();
 
-const client = new Client({intents:[GatewayIntentBits.Guilds]});
+const client = new Client({intents:[
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent,
+]});
 
 client.on('ready',()=>{
-    console.log(`Logado como ${client.user.tag}!`);
+    console.log(`\n\nLogado como ${client.user.tag}!\n\n`);
     
 });
-client.on(Events.InteractionCreate,(interaction)=>{
-    if(!interaction.isChatInputCommand()) return;
-    console.log(interaction)
-});
 
-//token
-
-client.login(process.env.TOKEN);
-
-//area de Commandos
-
-
-
-client.on(Events.InteractionCreate, async(interaction)=>{
-    if(!interaction.isChatInputCommand()) return;
-    const command = interaction.client.commands.get(interaction.commandName);
-
-    if(!command){
-        console.error(`Sem comando carregado ${interaction.commandName} não encontrado.`);
-        return;
-    }
-    try{
-        await command.execute(interaction);
-    }catch(error){
-        console.error(error);
-        if (interaction.replied || interaction.deferred){
-            await interaction.followUp({
-                content: 'Ocorreu um erro ao executar o comando!',
-                flags: MessageFlags.Ephemeral,
-            });
-        }else{
-            await interaction.reply({
-                content: 'Ocorreu um erro ao executar o comando!',
-                flags: MessageFlags.Ephemeral,
-            })
-        }
-    }
-});
+//Cria a coleção de comandos
 
 client.commands = new Collection();
 const foldersPath = path.join(__dirname,'commands');
@@ -68,3 +36,136 @@ for(const folder of commandFolders){
         }
     }
 }
+
+//Area de Comandos
+
+client.on(Events.InteractionCreate, async(interaction)=>{
+    //Area de comandos de barra
+    if(interaction.isChatInputCommand()){
+        const command = interaction.client.commands.get(interaction.commandName);
+        if(!command){
+            console.error(`Nenhum comando carregado. ${interaction.commandName} não encontrado.`);
+            return;
+        }
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            if (interaction.replied || interaction.deferred){
+                await interaction.followUp({
+                    content: 'Ocorreu um erro ao executar o comando!',
+                    flags: MessageFlags.Ephemeral,
+                });
+            }else{
+                await interaction.reply({
+                    content: 'Ocorreu um erro ao executar o comando!',
+                    flags: MessageFlags.Ephemeral,
+                })
+            }
+        }
+    }
+
+    //Trata os botões e modais atraveis do customID
+
+    if(interaction.isButton() && interaction.customId ==='formulario'){ //Manter custom Id padrão!
+        if(interaction.channel.type==1){ // Comando de sugestão!
+            try {
+                await interaction.reply({
+                    content: `Por favor, digite sua sugestão para melhorar o bot e nosso servidor na próxima mensagem!`,
+                    ephemeral: false
+                });
+
+                //Coletor da mensagem
+                const filter = m => m.author.id === interaction.user.id;
+                const collector = interaction.channel.createMessageCollector({
+                    filter,
+                    time: 120000,// 2 minutos para responder
+                    max:1
+                });
+                
+
+                collector.on('collect',async message=>{
+                    const resposta = message.content;
+                    // Envia para o canal de sugestões!
+                    try{
+                        const suggestionChannel = client.channels.cache.get(idSuggestion);
+                        if(suggestionChannel){
+                            const {createSuggestionEmbed,createStatusButtons} = require('./suport/embds/Suggestion_Embed');
+                            const embedsugestao = createSuggestionEmbed(resposta);
+                            const buttons = createStatusButtons();
+                            await suggestionChannel.send({embeds:[embedsugestao], components:[buttons]});
+                            await message.reply({content:`Obrigado por sua resposta! Seu feedback será avaliado!`});
+                        }else{
+                            console.error('Canal não encontrado!')
+                            await message.reply({content:'Erro ao enviar sugestão. Tente novamente!'});
+                        }
+                    }catch(error){
+                        console.error("Erro ao enviar para canal de sugestões: ",error)
+                    }
+                    collector.stop(); // Interrompe após a primeira mensagem
+                });
+                collector.on('end',collected=>{
+                    if(collected.size === 0){
+                        client.channels.send({ content: 'Tempo esgotado para responder. Tente novamente!' });
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao lidar com a interação de botão na DM',error);
+            }
+        }
+     }
+      if(interaction.isButton()&& (interaction.customId==='Btn_aprov'||interaction.customId==='Btn_rejei'||interaction.customId==='Btn_penden')){
+        try{
+            const message = interaction.message;
+            if(!message.embeds||message.embeds.length ===0){
+                await interaction.reply({
+                    content:"Mensagem de sugestão não encontrada!",
+                    flags:MessageFlags.Ephemeral
+                });
+                return;
+            }
+            const originalEmbed = message.embeds[0];
+                    let NewStatus = '';
+
+                    switch(interaction.customId){
+                        case 'Btn_aprov':
+                            NewStatus = "aprovado";
+                            break;
+                        case "Btn_rejei":
+                            NewStatus = "rejeitado";
+                            break;
+                        case "Btn_penden":
+                            NewStatus = "pendente";
+                            break;
+                        default:
+                            NewStatus = "pendente";
+                    }
+
+
+                    //Area para fazer Update no embed de ugestão
+                    const{updateSuggestionEmbed,createStatusButtons}=require('./suport/embds/Suggestion_Embed');
+                    const updateEmbed = updateSuggestionEmbed(originalEmbed,NewStatus,interaction.user.id);
+
+                    //Atualiza a mensagem
+                    await message.edit({
+                        embeds:[updateEmbed],
+                        components:[createStatusButtons()]
+                    });
+
+                    await interaction.reply({
+                        content: `Status de sugestão alterado para **${NewStatus === "aprovado"?"Aprovado":NewStatus ==="rejeitado"?"Rejeitado":"pendente"}**!`,
+                        flags:MessageFlags.ephemeral
+                    });
+                }catch(error){
+                    console.error("Erro ao atualizar status da sugestão: ",error);
+                    await interaction.reply({
+                        content:"Erro ao atualizar o status da sugestão!",
+                        flags:MessageFlags.Ephemeral
+                    });
+                }
+            }
+});
+
+//Token
+
+client.login(process.env.TOKEN);
