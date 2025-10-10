@@ -1,8 +1,9 @@
 const{Client, Events, GatewayIntentBits,Collection,MessageFlags, NewsChannel, PermissionFlagsBits } = require(`discord.js`)
 const path = require('node:path');
 const fs = require('node:fs');
-const{idSuggestion} = require('./config.json');
 require('dotenv').config();
+const idSuggestion = process.env.IDSUGESTION;
+
 
 const client = new Client({intents:[
     GatewayIntentBits.Guilds,
@@ -114,8 +115,13 @@ client.on(Events.InteractionCreate, async(interaction)=>{
             }
         }
      }
-     if(interaction.member.permissions.has(PermissionFlagsBits.Administrator)){  
+     if(interaction.inGuild()){
       if(interaction.isButton()&& (interaction.customId==='Btn_aprov'||interaction.customId==='Btn_rejei'||interaction.customId==='Btn_penden')){
+         if(!interaction.member.permissions.has(PermissionFlagsBits.Administrator)){  
+            return interaction.reply({content:"Você não tem permissão para usar este botão!",
+                ephemeral:true
+            });
+         }
         try{
             const message = interaction.message;
             if(!message.embeds||message.embeds.length ===0){
@@ -167,6 +173,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
         }}else{
                         return;
                     }
+                
 });
 
 //Token
