@@ -1,4 +1,4 @@
-const{Client, Events, GatewayIntentBits, SlashCommandBuilder,Collection,MessageFlags, Discord, NewsChannel } = require(`discord.js`)
+const{Client, Events, GatewayIntentBits,Collection,MessageFlags, NewsChannel, PermissionFlagsBits } = require(`discord.js`)
 const path = require('node:path');
 const fs = require('node:fs');
 const{idSuggestion} = require('./config.json');
@@ -114,6 +114,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
             }
         }
      }
+     if(interaction.member.permissions.has(PermissionFlagsBits.Administrator)){  
       if(interaction.isButton()&& (interaction.customId==='Btn_aprov'||interaction.customId==='Btn_rejei'||interaction.customId==='Btn_penden')){
         try{
             const message = interaction.message;
@@ -141,29 +142,31 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                             NewStatus = "pendente";
                     }
 
-
-                    //Area para fazer Update no embed de ugestão
+                
+                    //Area para fazer Update no embed de sugestão
                     const{updateSuggestionEmbed,createStatusButtons}=require('./suport/embds/Suggestion_Embed');
                     const updateEmbed = updateSuggestionEmbed(originalEmbed,NewStatus,interaction.user.id);
-
+                    if(client.user.id)
                     //Atualiza a mensagem
+                     
                     await message.edit({
                         embeds:[updateEmbed],
                         components:[createStatusButtons()]
                     });
-
                     await interaction.reply({
                         content: `Status de sugestão alterado para **${NewStatus === "aprovado"?"Aprovado":NewStatus ==="rejeitado"?"Rejeitado":"pendente"}**!`,
                         flags:MessageFlags.ephemeral
                     });
-                }catch(error){
+                    }catch(error){
                     console.error("Erro ao atualizar status da sugestão: ",error);
                     await interaction.reply({
                         content:"Erro ao atualizar o status da sugestão!",
                         flags:MessageFlags.Ephemeral
                     });
-                }
-            }
+                    }
+        }}else{
+                        return;
+                    }
 });
 
 //Token
