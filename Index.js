@@ -12,9 +12,11 @@ const client = new Client({intents:[
     GatewayIntentBits.MessageContent,
 ]});
 
-client.on('ready',()=>{
+const { startBirthdayChecker } = require('./Scripts/britdaycheck');
+
+client.on('clientReady',()=>{
     console.log(`\n\nLogado como ${client.user.tag}!\n\n`);
-    
+    startBirthdayChecker(client);
 });
 
 //Cria a coleção de comandos
