@@ -871,7 +871,7 @@ async function generateProfileImage(interaction, member) {
 
     // Jogo favorito (se existir)
     if (userData.favoriteGame) {
-        ctx.fillText(`Favorito: ${userData.favoriteGame}`, startX, startY + (lineHeight * currentLine++));
+        //ctx.fillText(`Favorito: ${userData.favoriteGame}`, startX, startY + (lineHeight * currentLine++));
     }
     
     // Badges (carregar e desenhar)
