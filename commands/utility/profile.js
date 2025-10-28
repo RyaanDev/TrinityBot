@@ -4,8 +4,10 @@ const ColorThief = require('colorthief');
 const axios = require('axios'); 
 const db = require('../../database/database');
 const path = require('path');
+const voiceTracker = require('../../Scripts/VoiceTrack');
 
 registerFont(path.resolve(__dirname, '../../fonts', 'GothTitan-0W5md.ttf'), { family: 'Goth Titan' });
+
 
 // Função para RGB para HEX 
 function rgbToHex(r, g, b) {
@@ -289,7 +291,8 @@ function formatUserData(member) {
         commandCount: 0,
         eventsParticipated: 0,
         eventsWon: 0,
-        totalVoiceTime: 0, // em minutos
+        totalVoiceTime: 0, // em minutos - será atualizado pelo voice tracker
+        lastVoiceUpdate: new Date().toISOString(),
         badges: [],
         createdAt: new Date().toISOString()
     };
@@ -323,6 +326,8 @@ async function loadBadges(badgeNames) {
     return badges;
 }
 
+
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('profile')
@@ -352,7 +357,19 @@ module.exports = {
                     option.setName('valor')
                         .setDescription('Novo valor para o campo')
                         .setRequired(true)
-                        .setMaxLength(100))),
+                        .setMaxLength(300)))
+                        .addSubcommand(subcommand =>
+                                        subcommand
+                                            .setName('voice')
+                                            .setDescription('Mostra estatísticas de tempo em call'))
+                                            .addSubcommand(subcommand =>
+                                                            subcommand
+                                                                .setName('reset-voice')
+                                                                .setDescription('[ADMIN] Reseta o tempo de voz de um usuário')
+                                                                .addUserOption(option =>
+                                                                    option.setName('usuario')
+                                                                        .setDescription('Usuário para resetar o tempo')
+                                                                        .setRequired(true))),
     
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -361,9 +378,56 @@ module.exports = {
             await handleProfileView(interaction);
         } else if (subcommand === 'edit') {
             await handleProfileEdit(interaction);
+        }else if (subcommand === 'voice') {
+            await handleVoiceStats(interaction);
+        }else if (subcommand === 'reset-voice') {
+            await handleResetVoice(interaction);
         }
     },
 };
+
+//sessão para VoiceTrack
+
+async function handleVoiceStats(interaction) {
+    const userId = interaction.user.id;
+    const voiceMinutes = voiceTracker.getVoiceTime(userId);
+    const voiceHours = Math.floor(voiceMinutes / 60);
+    const voiceMinutesRemainder = voiceMinutes % 60;
+
+    let response = `**Estatísticas de Voz**\n`;
+    response += `Tempo total em call: ${voiceHours}h ${voiceMinutesRemainder}m\n`;
+    response += `Isso equivale a aproximadamente ${Math.floor(voiceHours / 24)} dias!`;
+
+    await interaction.reply({
+        content: response,
+        flags: MessageFlags.Ephemeral
+    });
+}
+
+// Função para resetar tempo de voz
+async function handleResetVoice(interaction) {
+    // Verificar permissões
+    if (!interaction.member.permissions.has('ADMINISTRATOR')) {
+        return await interaction.reply({
+            content: 'Você precisa de permissão de administrador para usar este comando.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    const targetUser = interaction.options.getUser('usuario');
+    let userData = db.read('users', targetUser.id);
+
+    if (userData) {
+        userData.totalVoiceTime = 0;
+        userData.lastVoiceUpdate = new Date().toISOString();
+        db.update('users', targetUser.id, userData);
+    }
+
+    await interaction.reply({
+        content: `Tempo de voz de ${targetUser.tag} foi resetado.`,
+        flags: MessageFlags.Ephemeral
+    });
+}
 
 // Função para visualizar perfil (próprio ou de outro usuário)
 async function handleProfileView(interaction) {
@@ -442,7 +506,7 @@ async function handleProfileEdit(interaction) {
 
 // Função principal para gerar a imagem do perfil (reutilizável)
 async function generateProfileImage(interaction, member) {
-    const canvas = new Canvas(700, 400);
+    const canvas = new Canvas(1055, 650);
     const ctx = canvas.getContext('2d');
     const userId = member.id;
 
@@ -497,28 +561,56 @@ async function generateProfileImage(interaction, member) {
     // Desenhar elementos na imagem
     const radius = 20;
     const avatarRectSize = 300;
+    const prinX = 880;
+    const prinY = 530;
+    const prinA = 10;
+    const prinB = 30;
 
     // FUNDO PRINCIPAL
     ctx.beginPath();
-    ctx.roundRect(10, 10, 680, 380, radius);
+    ctx.roundRect(prinA, prinB, prinX, prinY, radius);
     ctx.fillStyle = '#1a1a1a';
     ctx.fill();
 
     // BORDA GRADIENTE PRINCIPAL
     ctx.beginPath();
-    const mainGradient = ctx.createLinearGradient(0, 0, 0, 170);
+    const mainGradient = ctx.createLinearGradient(30, 0, 0, 170);
     mainGradient.addColorStop(0, mainStartColor);
     mainGradient.addColorStop(1, mainEndColor);
     ctx.strokeStyle = mainGradient;
     ctx.lineWidth = 6;
-    ctx.roundRect(10, 10, 680, 380, radius);
+    ctx.roundRect(prinA, prinB, prinX, prinY, radius);
+    ctx.stroke();
+
+    // ÁREA DE INFORMAÇÕES À DIREITA(A cima)
+    const infoX2 = 360;
+    const infoY2 = prinB+60;
+    const infoWidth2 = prinX-infoX2-10;
+    const infoHeight2 = (prinY/2)+40;
+
+    ctx.beginPath();
+    ctx.roundRect(infoX2, infoY2, infoWidth2, infoHeight2, radius);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fill();
+    
+    ctx.beginPath();
+    const infoGradient2 = createHarmoniousGradient(
+        ctx, 
+        infoX2, infoY2, 
+        infoX2 + infoWidth2, infoY2 + infoHeight2,
+        mainStartColor,
+        'analogous'
+    );
+    ctx.strokeStyle = infoGradient2;
+    ctx.lineWidth = 4;
+    ctx.roundRect(infoX2, infoY2, infoWidth2, infoHeight2, radius);
     ctx.stroke();
 
     // ÁREA DE INFORMAÇÕES À DIREITA
-    const infoX = 340;
-    const infoY = 20;
-    const infoWidth = 340;
-    const infoHeight = 360;
+    const infoX = 360;
+    const infoY = infoHeight2+110;
+    const infoWidth = prinX-infoX-10;
+    const infoHeight = infoY-(prinY/2)-20;
 
     ctx.beginPath();
     ctx.roundRect(infoX, infoY, infoWidth, infoHeight, radius);
@@ -539,10 +631,10 @@ async function generateProfileImage(interaction, member) {
     ctx.stroke();
 
     // ÁREA DO NOME DO USUÁRIO
-    const nameX = 20;
-    const nameY = 330;
-    const nameWidth = 303;
+    const nameWidth = 460;
     const nameHeight = 50;
+    const nameX = (prinX-nameWidth)/2;
+    const nameY = 10;
 
     // Fundo do nome
     ctx.beginPath();
@@ -564,6 +656,49 @@ async function generateProfileImage(interaction, member) {
     ctx.roundRect(nameX, nameY, nameWidth, nameHeight, radius);
     ctx.stroke();
 
+    //Variaveis do layout inferior
+    const startY = infoY+40;
+    const startX = prinX-infoWidth+10;
+    const lineHeight = 25;
+    const collum = infoWidth/3;
+    let currentcollum = 0;
+    let currentBtnCollum = 0;
+    let currentLine = 0;
+    let currentBtnLine = 0;
+
+    //Area para Botões do layout inferior
+    ctx.beginPath();
+    ctx.fillStyle =infoGradient;
+    ctx.roundRect(startX-5+(collum*currentBtnCollum),startY-20+(lineHeight*2*currentBtnLine++), 100,40,7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle =infoGradient;
+    ctx.roundRect(startX-5+(collum*currentBtnCollum++),startY-20+(lineHeight*2*currentBtnLine--), 100,40,7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle =infoGradient;
+    ctx.roundRect(startX-5+(collum*currentBtnCollum),startY-20+(lineHeight*2*currentBtnLine++), 100,40,7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle =infoGradient;
+    ctx.roundRect(startX-5+(collum*currentBtnCollum++),startY-20+(lineHeight*2*currentBtnLine--), 100,40,7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle =infoGradient;
+    ctx.roundRect(startX-5+(collum*currentBtnCollum),startY-20+(lineHeight*2*currentBtnLine++), 100,40,7);
+    ctx.fill();
+
+    if (member.id === interaction.user.id) {
+        ctx.beginPath();
+        ctx.fillStyle =infoGradient;
+        ctx.roundRect(startX-5+(collum*currentBtnCollum++),startY-20+(lineHeight*2*currentBtnLine--), 100,40,7);
+        ctx.fill();
+    }
+
     // Texto do nome
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 25px "Lucida Console", "Arial Unicode MS", sans-serif';
@@ -571,65 +706,174 @@ async function generateProfileImage(interaction, member) {
     ctx.textBaseline = 'middle';
     ctx.fillText(member.displayName, nameX + nameWidth/2, nameY + nameHeight/2);
 
-    // 5. MÁSCARA PARA A FOTO DE PERFIL
+    // MÁSCARA PARA A FOTO DE PERFIL
     ctx.save();
-    const avatarRectX = 20;
-    const avatarRectY = 20;
-    const avatarRadius = 20;
+    const avatarRectX = ((prinX-infoWidth)-avatarRectSize)/2;
+    const avatarRectY = prinB+60;
+    const raioavatar = avatarRectSize/2;
+    const avatarRadius = Math.PI*2;
+    console.log('valor area: ' +avatarRadius);
 
     ctx.beginPath();
-    ctx.roundRect(avatarRectX, avatarRectY, avatarRectSize, avatarRectSize, avatarRadius);
+    ctx.arc(avatarRectX+raioavatar, avatarRectY+raioavatar, raioavatar,0, avatarRadius, true);
     ctx.clip();
     ctx.drawImage(avatar, avatarRectX, avatarRectY, avatarRectSize, avatarRectSize);
     ctx.restore();
 
+    //caixas de descrição
+    const descSizeX1= 130;
+    const descSizeX2= 100;
+    const deszSizeY = 27;
+    ctx.beginPath();
+    ctx.roundRect(infoX2+20, infoY2-(deszSizeY/2), descSizeX1, deszSizeY, 7);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(infoX2+20, infoY2-(deszSizeY/2), descSizeX1, deszSizeY, 7);
+    ctx.lineWidth =3;
+    ctx.strokeStyle = infoGradient;
+    ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '16px bold "Lucida Console", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText("Sobre mim",infoX2+20+(descSizeX1/2), infoY2, descSizeX1, deszSizeY);
+    
+
+    //caixa de baixo
+
+    ctx.beginPath();
+    ctx.roundRect(infoX+20, infoY-(deszSizeY/2), descSizeX2, deszSizeY, 7);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(infoX+20, infoY-(deszSizeY/2), descSizeX2, deszSizeY, 7);
+    ctx.lineWidth =3;
+    ctx.strokeStyle = infoGradient;
+    ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '16px bold "Lucida Console", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText("Status",infoX+20+(descSizeX2/2), infoY, descSizeX2, deszSizeY);
+    
+
+    //borda da foto
+
+    ctx.beginPath();
+    ctx.arc(avatarRectX+raioavatar, avatarRectY+raioavatar, raioavatar,0, avatarRadius, true);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = mainGradient;
+    ctx.stroke();
+
     // INFORMAÇÕES DO PERFIL (DIREITA)
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '14px "Lucida Console", sans-serif';
+    ctx.font = '18px bold "Lucida Console", sans-serif';
     ctx.textAlign = 'left';
     
-    const startY = 50;
-    const lineHeight = 25;
-    let currentLine = 0;
 
-    // Tempo no Discord
+    // Tempo no Discord 
+    
     const discordTime = getDiscordTime(userData.discordJoinDate);
-    ctx.fillText(`Discord: ${discordTime}`, infoX + 20, startY + (lineHeight * currentLine++));
+    ctx.fillText(`⛓️‍💥 ${discordTime}`, startX, startY + (lineHeight *2* currentLine++));
 
     // Cargo principal
     const mainRole = userData.roles.length > 0 ? userData.roles[0] : 'Membro';
-    ctx.fillText(`Cargo: ${mainRole}`, infoX + 20, startY + (lineHeight * currentLine++));
-
-    // Jogo favorito (se existir)
-    if (userData.favoriteGame) {
-        ctx.fillText(`Favorito: ${userData.favoriteGame}`, infoX + 20, startY + (lineHeight * currentLine++));
-    }
+    ctx.fillText(`👑 ${mainRole}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
 
     // Tempo em chamadas (horas)
-    const voiceHours = Math.floor((userData.totalVoiceTime || 0) / 60);
-    ctx.fillText(`Chamadas: ${voiceHours}h`, infoX + 20, startY + (lineHeight * currentLine++));
+    const voiceMinutes = voiceTracker.getVoiceTime(userId);
+    const voiceHours = Math.floor(voiceMinutes / 60);
+    const voiceMinutesRemainder = voiceMinutes % 60;
+    ctx.fillText(`🎧 ${voiceHours}h ${voiceMinutesRemainder}m`, startX+(collum*currentcollum), startY + (lineHeight * 2*currentLine++));
 
     // Eventos participados
-    ctx.fillText(`Eventos: ${userData.eventsParticipated || 0}`, infoX + 20, startY + (lineHeight * currentLine++));
+    ctx.fillText(`✨ ${userData.eventsParticipated || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
 
     // Vitórias
-    ctx.fillText(`Vitórias: ${userData.eventsWon || 0}`, infoX + 20, startY + (lineHeight * currentLine++));
+    ctx.fillText(`🏆 ${userData.eventsWon || 0}`, startX+(collum*currentcollum), startY + (lineHeight *2* currentLine++));
 
     // Comandos usados (só mostra se for o próprio usuário)
     if (member.id === interaction.user.id) {
-        ctx.fillText(`Comandos: ${userData.commandCount || 0}`, infoX + 20, startY + (lineHeight * currentLine++));
+        ctx.fillText(`⚙️ ${userData.commandCount || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+        valtype = true;
     }
+
+
+    const PerfilTitle = userData.totalVoiceTime;
+    ctx.font = '35px bold Lucida Console, sans-serif'
+    switch (PerfilTitle){
+        case 0:
+           // ctx.fillText('Novato',avatarRectX+avatarRectX,avatarRectY*3+10);
+            break;
+        case 1:
+            //ctx.fillText('Aprendiz',avatarRectX+avatarRectX,avatarRectY*3+10);
+            break;
+    }
+
+    //Função de Warp para o texto
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const lines = [];
+    const paragraphs = text.split('\n');
+    
+    for (const paragraph of paragraphs) {
+        const words = paragraph.split(' ');
+        let currentLine = words[0];
+        
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + ' ' + word).width;
+            
+            if (width < maxWidth) {
+                currentLine += ' ' + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+    }
+    
+    // Desenhar todas as linhas
+    let currentY = y;
+    for (const line of lines) {
+        // Verificar se ainda cabe na área
+        if (currentY < infoY2 + infoHeight2 - 20) {
+            ctx.fillText(line, x, currentY);
+            currentY += lineHeight;
+        } else {
+            break; // Para de desenhar se não couber mais
+        }
+    }
+    
+    return currentY;
+}
 
     // Sobre (se existir)
     if (userData.about && userData.about.length > 0) {
-        ctx.fillText(`${userData.about.substring(0, 30)}...`, infoX + 20, startY + (lineHeight * currentLine++));
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '19px bold "Lucida Console", sans-serif';
+        ctx.textAlign = 'left';
+        wrapText(ctx,userData.about,infoX2+10,infoY2+30,infoWidth2-20,25);
     }
 
     // Aniversário (se existir)
     if (userData.birthday) {
-        ctx.fillText(`${userData.birthday}`, infoX + 20, startY + (lineHeight * currentLine++));
+       /* const typeX = prinX-infoX+(infoX/2);
+        const typeY = prinY-14;
+        ctx.beginPath();
+        ctx.roundRect(typeX,typeY,60,20,3);
+        ctx.fillStyle = "#FFD700";
+        ctx.fill();*/
+        //ctx.clip()
+        //ctx.fillText(`${userData.birthday}`, typeX, typeY);
+        //ctx.fillStyle = "#f2f5f7";
+        
     }
 
+    // Jogo favorito (se existir)
+    if (userData.favoriteGame) {
+        ctx.fillText(`Favorito: ${userData.favoriteGame}`, startX, startY + (lineHeight * currentLine++));
+    }
+    
     // Badges (carregar e desenhar)
     if (userData.badges && userData.badges.length > 0) {
         const badges = await loadBadges(userData.badges);

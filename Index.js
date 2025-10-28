@@ -2,6 +2,7 @@ const{Client, Events, GatewayIntentBits,Collection,MessageFlags, NewsChannel, Pe
 const path = require('node:path');
 const fs = require('node:fs');
 require('dotenv').config();
+const voiceTracker = require('./Scripts/VoiceTrack');
 const idSuggestion = process.env.IDSUGESTION;
 
 
@@ -10,6 +11,7 @@ const client = new Client({intents:[
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates
 ]});
 
 const { startBirthdayChecker } = require('./Scripts/britdaycheck');
@@ -67,6 +69,31 @@ client.on(Events.InteractionCreate, async(interaction)=>{
             }
         }
     }
+
+    //Evento de VoiceTrack
+
+    client.on('voiceStateUpdate', (oldState, newState) => {
+    // Usuário entrou em um canal de voz
+    if (!oldState.channelId && newState.channelId) {
+        voiceTracker.startTracking(newState.member, newState.channelId);
+    }
+    
+    // Usuário saiu de um canal de voz
+    if (oldState.channelId && !newState.channelId) {
+        voiceTracker.stopTracking(oldState.member);
+    }
+    
+    // Usuário mudou de canal (saiu de um e entrou em outro)
+    if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+        voiceTracker.stopTracking(oldState.member);
+        voiceTracker.startTracking(newState.member, newState.channelId);
+    }
+});
+
+    // Limpeza periódica de sessões
+    setInterval(() => {
+        voiceTracker.cleanup();
+    }, 60 * 60 * 1000); // A cada hora
 
     //Trata os botões e modais atraveis do customID
 
