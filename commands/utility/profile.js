@@ -326,7 +326,23 @@ async function loadBadges(badgeNames) {
     return badges;
 }
 
-
+async function loadLocalIcons() {
+    const icons = {};
+    const iconNames = ['crown', 'headphone', 'sparkle', 'trophy', 'gear', 'discord'];
+    
+    for (const iconName of iconNames) {
+        try {
+            const iconPath = path.resolve(__dirname, '../../icons', `${iconName}.png`);
+            icons[iconName] = await loadImage(iconPath);
+            console.log(`Ícone ${iconName} carregado com sucesso`);
+        } catch (error) {
+            console.error(`Erro ao carregar ícone ${iconName}:`, error.message);
+            icons[iconName] = null;
+        }
+    }
+    
+    return icons;
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -505,10 +521,15 @@ async function handleProfileEdit(interaction) {
 }
 
 // Função principal para gerar a imagem do perfil (reutilizável)
+// Função principal para gerar a imagem do perfil (reutilizável)
 async function generateProfileImage(interaction, member) {
     const canvas = new Canvas(1055, 650);
     const ctx = canvas.getContext('2d');
     const userId = member.id;
+
+    // CARREGAR ÍCONES LOCAIS
+    const icons = await loadLocalIcons();
+    const iconSize = 25;
 
     // Gerenciar dados do usuário no banco de dados
     let userData = db.read('users', userId);
@@ -658,7 +679,7 @@ async function generateProfileImage(interaction, member) {
 
     //Variaveis do layout inferior
     const startY = infoY+40;
-    const startX = prinX-infoWidth+10;
+    const startX = prinX-infoWidth+40;
     const lineHeight = 25;
     const collum = infoWidth/3;
     let currentcollum = 0;
@@ -769,34 +790,50 @@ async function generateProfileImage(interaction, member) {
     ctx.font = '18px bold "Lucida Console", sans-serif';
     ctx.textAlign = 'left';
     
-
-    // Tempo no Discord 
     
+
+     // Tempo no Discord 
+    if (icons.crown) {
+        ctx.drawImage(icons.discord, startX - iconSize -15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+    }
     const discordTime = getDiscordTime(userData.discordJoinDate);
-    ctx.fillText(`\u{1F517} ${discordTime}`, startX, startY + (lineHeight *2* currentLine++));
+    ctx.fillText(`${discordTime}`, startX, startY + (lineHeight * 2 * currentLine++));
 
     // Cargo principal
+    if (icons.crown) {
+        ctx.drawImage(icons.crown, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+    }
     const mainRole = userData.roles.length > 0 ? userData.roles[0] : 'Membro';
-    ctx.fillText(`\u{1F451} ${mainRole}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+    ctx.fillText(`${mainRole}`, startX + (collum * currentcollum++), startY + (lineHeight * 2 * currentLine--));
 
     // Tempo em chamadas (horas)
+    if (icons.headphone) {
+        ctx.drawImage(icons.headphone, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+    }
     const voiceMinutes = voiceTracker.getVoiceTime(userId);
     const voiceHours = Math.floor(voiceMinutes / 60);
     const voiceMinutesRemainder = voiceMinutes % 60;
-    ctx.fillText(`\u{1F3A7} ${voiceHours}h ${voiceMinutesRemainder}m`, startX+(collum*currentcollum), startY + (lineHeight * 2*currentLine++));
+    ctx.fillText(`${voiceHours}h ${voiceMinutesRemainder}m`, startX + (collum * currentcollum), startY + (lineHeight * 2 * currentLine++));
 
     // Eventos participados
-    ctx.fillText(`\u{2728} ${userData.eventsParticipated || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+    if (icons.sparkle) {
+        ctx.drawImage(icons.sparkle, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+    }
+    ctx.fillText(`${userData.eventsParticipated || 0}`, startX + (collum * currentcollum++), startY + (lineHeight * 2 * currentLine--));
 
     // Vitórias
-    ctx.fillText(`\u{1F3C6} ${userData.eventsWon || 0}`, startX+(collum*currentcollum), startY + (lineHeight *2* currentLine++));
+    if (icons.trophy) {
+        ctx.drawImage(icons.trophy, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+    }
+    ctx.fillText(`${userData.eventsWon || 0}`, startX + (collum * currentcollum), startY + (lineHeight * 2 * currentLine++));
 
     // Comandos usados (só mostra se for o próprio usuário)
     if (member.id === interaction.user.id) {
-        ctx.fillText(`\u{2699}\u{FE0F} ${userData.commandCount || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
-        valtype = true;
+        if (icons.gear) {
+            ctx.drawImage(icons.gear, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
+        }
+        ctx.fillText(`${userData.commandCount || 0}`, startX + (collum * currentcollum++), startY + (lineHeight * 2 * currentLine--));
     }
-
 
     const PerfilTitle = userData.totalVoiceTime;
     ctx.font = '35px bold Lucida Console, sans-serif'
