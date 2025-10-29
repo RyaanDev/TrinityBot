@@ -773,27 +773,27 @@ async function generateProfileImage(interaction, member) {
     // Tempo no Discord 
     
     const discordTime = getDiscordTime(userData.discordJoinDate);
-    ctx.fillText(`⛓️‍💥 ${discordTime}`, startX, startY + (lineHeight *2* currentLine++));
+    ctx.fillText(`\u{1F517} ${discordTime}`, startX, startY + (lineHeight *2* currentLine++));
 
     // Cargo principal
     const mainRole = userData.roles.length > 0 ? userData.roles[0] : 'Membro';
-    ctx.fillText(`👑 ${mainRole}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+    ctx.fillText(`\u{1F451} ${mainRole}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
 
     // Tempo em chamadas (horas)
     const voiceMinutes = voiceTracker.getVoiceTime(userId);
     const voiceHours = Math.floor(voiceMinutes / 60);
     const voiceMinutesRemainder = voiceMinutes % 60;
-    ctx.fillText(`🎧 ${voiceHours}h ${voiceMinutesRemainder}m`, startX+(collum*currentcollum), startY + (lineHeight * 2*currentLine++));
+    ctx.fillText(`\u{1F3A7} ${voiceHours}h ${voiceMinutesRemainder}m`, startX+(collum*currentcollum), startY + (lineHeight * 2*currentLine++));
 
     // Eventos participados
-    ctx.fillText(`✨ ${userData.eventsParticipated || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+    ctx.fillText(`\u{2728} ${userData.eventsParticipated || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
 
     // Vitórias
-    ctx.fillText(`🏆 ${userData.eventsWon || 0}`, startX+(collum*currentcollum), startY + (lineHeight *2* currentLine++));
+    ctx.fillText(`\u{1F3C6} ${userData.eventsWon || 0}`, startX+(collum*currentcollum), startY + (lineHeight *2* currentLine++));
 
     // Comandos usados (só mostra se for o próprio usuário)
     if (member.id === interaction.user.id) {
-        ctx.fillText(`⚙️ ${userData.commandCount || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
+        ctx.fillText(`\u{2699}\u{FE0F} ${userData.commandCount || 0}`, startX+(collum*currentcollum++), startY + (lineHeight *2* currentLine--));
         valtype = true;
     }
 
