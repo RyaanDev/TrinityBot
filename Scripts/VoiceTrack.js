@@ -24,7 +24,7 @@ class VoiceTracker {
         if (!session) return 0;
 
         const endTime = new Date();
-        const timeSpent = Math.floor((endTime - session.joinTime) / 1000 / 60); // tempo em minutos
+        const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
 
         // Atualizar no banco de dados
         await this.updateVoiceTime(userId, timeSpent);
