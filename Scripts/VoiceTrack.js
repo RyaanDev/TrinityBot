@@ -18,18 +18,9 @@ class VoiceTracker {
 
     // Parar tracking e calcular tempo quando usuário sair
     async stopTracking(member) {
-        const userId = member.id;
-         let userData = db.read('users', userId);
-        if (!userData) {
-                // Se não existir, criar perfil básico
-                userData = formatUserData(userId);
-                db.create('users', userId, userData);
-                console.log(`Novo usuario adicionado com sucesso! ${userId}`)
-            }
         const session = this.voiceSessions.get(userId);
-        
+        try{const userId = member.id;
         if (!session) return 0;
-
         const endTime = new Date();
         const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
 
@@ -39,7 +30,16 @@ class VoiceTracker {
         this.voiceSessions.delete(userId);
         console.log(`🎧 ${member.user.tag} ficou ${timeSpent} minutos em call`);
 
-        return timeSpent;
+        return timeSpent;}
+        catch{
+            let userData = db.read('users', userId);
+        if (!userData) {
+                // Se não existir, criar perfil básico
+                userData = formatUserData(userId);
+                db.create('users', userId, userData);
+                console.log(`Novo usuario adicionado com sucesso! ${userId}`)
+            }
+        }
     }
 
     // Atualizar tempo total no banco de dados
