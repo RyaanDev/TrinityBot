@@ -29,6 +29,26 @@ function formatUserData(member) {
     return { ...automaticData, ...optionalData };
 }
 
+function createBasicUserData(userId) {
+    const now = new Date();
+    
+    return {
+        discordJoinDate: now.toISOString(), // Usa data atual como fallback
+        serverJoinDate: now.toISOString(), // Usa data atual como fallback
+        roles: [],
+        commandCount: 0,
+        eventsParticipated: 0,
+        eventsWon: 0,
+        totalVoiceTime: 0,
+        lastVoiceUpdate: now.toISOString(),
+        badges: [],
+        createdAt: now.toISOString(),
+        about: "",
+        birthday: "",
+        favoriteGame: "",
+        socialLinks: {}
+    };
+}
 
 class VoiceTracker {
     constructor() {
@@ -56,38 +76,42 @@ class VoiceTracker {
         const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
 
         // Atualizar no banco de dados
-        await this.updateVoiceTime(userId, timeSpent);
+        await this.updateVoiceTime(userId, timeSpent, member);
         
         this.voiceSessions.delete(userId);
         console.log(`🎧 ${member.user.tag} ficou ${timeSpent} minutos em call`);
 
         return timeSpent;}
-        catch{
+        catch (error) {
+            console.error(`Erro ao parar tracking para ${member.user.tag}:`, error);
+            
             let userData = db.read('users', userId);
-        if (!userData) {
-                // Se não existir, criar perfil básico
-                userData = formatUserData(userId);
+            if (!userData) {
+                // Se não existir, criar perfil usando o objeto member
+                userData = formatUserData(member);
                 db.create('users', userId, userData);
-                console.log(`Novo usuario adicionado com sucesso! ${userId}`)
+                console.log(`Novo usuario adicionado com sucesso! ${userId}`);
             }
+            return 0;
         }
     }
 
     // Atualizar tempo total no banco de dados
-    async updateVoiceTime(userId, minutes) {
+    async updateVoiceTime(userId, minutes,member=null) {
         let userData = db.read('users', userId);
         
         if (!userData) {
-            userData = {
-                totalVoiceTime: minutes,
-                lastVoiceUpdate: new Date().toISOString()
-            };
+            // Se temos o objeto member, usa formatUserData, senão usa createBasicUserData
+            userData = member ? formatUserData(member) : createBasicUserData(userId);
+            userData.totalVoiceTime = minutes;
+            userData.lastVoiceUpdate = new Date().toISOString();
+            db.create('users', userId, userData);
         } else {
             userData.totalVoiceTime = (userData.totalVoiceTime || 0) + minutes;
             userData.lastVoiceUpdate = new Date().toISOString();
+            db.update('users', userId, userData);
         }
         
-        db.update('users', userId, userData);
         return userData.totalVoiceTime;
     }
 
