@@ -1,5 +1,35 @@
 const db = require('../database/database');
 
+// Função para formatar dados do usuário
+function formatUserData(member) {
+    const now = new Date();
+    
+    // Dados automáticos obrigatórios
+    const automaticData = {
+        discordJoinDate: member.user.createdAt.toISOString(),
+        serverJoinDate: member.joinedAt.toISOString(),
+        roles: member.roles.cache.map(role => role.name).filter(name => name !== '@everyone'),
+        commandCount: 0,
+        eventsParticipated: 0,
+        eventsWon: 0,
+        totalVoiceTime: 0, // em minutos - será atualizado pelo voice tracker
+        lastVoiceUpdate: new Date().toISOString(),
+        badges: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    // Dados opcionais (serão preenchidos pelo usuário)
+    const optionalData = {
+        about: "",
+        birthday: "",
+        favoriteGame: "",
+        socialLinks: {}
+    };
+    
+    return { ...automaticData, ...optionalData };
+}
+
+
 class VoiceTracker {
     constructor() {
         this.voiceSessions = new Map(); // { userId: { joinTime: Date, channelId: string } }
