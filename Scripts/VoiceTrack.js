@@ -24,6 +24,7 @@ class VoiceTracker {
                 // Se não existir, criar perfil básico
                 userData = formatUserData(userId);
                 db.create('users', userId, userData);
+                console.log(`Novo usuario adicionado com sucesso! ${userId}`)
             }
         const session = this.voiceSessions.get(userId);
         
