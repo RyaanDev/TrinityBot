@@ -19,6 +19,12 @@ class VoiceTracker {
     // Parar tracking e calcular tempo quando usuário sair
     async stopTracking(member) {
         const userId = member.id;
+         let userData = db.read('users', userId);
+        if (!userData) {
+                // Se não existir, criar perfil básico
+                userData = formatUserData(userId);
+                db.create('users', userId, userData);
+            }
         const session = this.voiceSessions.get(userId);
         
         if (!session) return 0;
