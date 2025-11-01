@@ -276,6 +276,7 @@ function getDiscordTime(createdAt) {
     
     if (diffDays < 30) return `${diffDays} dias`;
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses`;
+    if (diffDays < 730 && diffDays > 365) return `${Math.floor(diffDays / 30)} ano`;
     return `${Math.floor(diffDays / 365)} anos`;
 }
 
