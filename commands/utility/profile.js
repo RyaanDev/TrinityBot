@@ -733,7 +733,6 @@ async function generateProfileImage(interaction, member) {
     const avatarRectY = prinB+60;
     const raioavatar = avatarRectSize/2;
     const avatarRadius = Math.PI*2;
-    console.log('valor area: ' +avatarRadius);
 
     ctx.beginPath();
     ctx.arc(avatarRectX+raioavatar, avatarRectY+raioavatar, raioavatar,0, avatarRadius, true);
@@ -811,7 +810,6 @@ async function generateProfileImage(interaction, member) {
         ctx.drawImage(icons.headphone, startX + (collum * currentcollum) - iconSize - 15, startY + (lineHeight * 2 * currentLine) - iconSize/2, iconSize, iconSize);
     }
     const voiceMinutes = voiceTracker.getVoiceTime(userId);
-    console.log(voiceMinutes);
     const voiceHours = Math.floor(voiceMinutes / 60);
     const voiceMinutesRemainder = voiceMinutes % 60;
     ctx.fillText(`${voiceHours}h ${voiceMinutesRemainder}m`, startX + (collum * currentcollum), startY + (lineHeight * 2 * currentLine++));
