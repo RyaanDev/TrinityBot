@@ -18,8 +18,9 @@ class VoiceTracker {
 
     // Parar tracking e calcular tempo quando usuário sair
     async stopTracking(member) {
+        const userId = member.id;
         const session = this.voiceSessions.get(userId);
-        try{const userId = member.id;
+        try{
         if (!session) return 0;
         const endTime = new Date();
         const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
