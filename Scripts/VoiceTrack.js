@@ -52,7 +52,8 @@ function createBasicUserData(userId) {
 
 class VoiceTracker {
     constructor() {
-        this.voiceSessions = new Map(); // { userId: { joinTime: Date, channelId: string } }
+        this.voiceSessions = new Map();
+        this.processingUsers = new Set();
     }
 
     // Iniciar tracking quando usuário entrar em um canal de voz
@@ -66,23 +67,38 @@ class VoiceTracker {
         console.log(`Iniciando tracking de voz para ${member.user.tag}`);
     }
 
-    // Parar tracking e calcular tempo quando usuário sair
+    // Para tracking e calcular tempo quando usuário sair
     async stopTracking(member) {
-        const userId = member.id;
-        const session = this.voiceSessions.get(userId);
-        try{
-        if (!session) return 0;
-        const endTime = new Date();
-        const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
-
-        // Atualizar no banco de dados
-        await this.updateVoiceTime(userId, timeSpent, member);
+       const userId = member.id;
         
-        this.voiceSessions.delete(userId);
-        console.log(`🎧 ${member.user.tag} ficou ${timeSpent} minutos em call`);
+        // Verificar se já está processando este usuário
+        if (this.processingUsers.has(userId)) {
+            console.log(`Usuário ${member.user.tag} já está sendo processado`);
+            return 0;
+        }
+        
+        const session = this.voiceSessions.get(userId);
+        if (!session) {
+            console.log(`Nenhuma sessão encontrada para ${member.user.tag}`);
+            return 0;
+        }
+        
+        try {
+            this.processingUsers.add(userId); // Marcar como em processamento
+            
+            const endTime = new Date();
+            const timeSpent = Math.floor((endTime - session.joinTime) / (1000 * 60)); // tempo em minutos
 
-        return timeSpent;}
-        catch (error) {
+            // Remover a sessão antes de atualizar o banco para evitar duplicação
+            this.voiceSessions.delete(userId);
+
+            // Atualizar no banco de dados
+            await this.updateVoiceTime(userId, timeSpent, member);
+            
+            console.log(`🎧 ${member.user.tag} ficou ${timeSpent} minutos em call`);
+
+            return timeSpent;
+        } catch (error) {
             console.error(`Erro ao parar tracking para ${member.user.tag}:`, error);
             
             let userData = db.read('users', userId);
@@ -93,6 +109,9 @@ class VoiceTracker {
                 console.log(`Novo usuario adicionado com sucesso! ${userId}`);
             }
             return 0;
+        } finally {
+            // Sempre remover do conjunto de processamento
+            this.processingUsers.delete(userId);
         }
     }
 
