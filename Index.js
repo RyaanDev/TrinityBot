@@ -38,6 +38,7 @@ for(const folder of commandFolders){
         // Verificar se o comando está na pasta admin e adicionar restrição
        if (folder === 'admin' && command.data) {
             command.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+            command.data.setDefaultMemberPermissions(0);
         }
 
         if('data'in command && 'execute' in command){
