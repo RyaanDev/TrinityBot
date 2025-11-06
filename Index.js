@@ -144,7 +144,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                 });
                 collector.on('end',collected=>{
                     if(collected.size === 0){
-                        client.channel.send({ content: 'Tempo esgotado para responder. Tente novamente!' });
+                        interaction.channel.send({ content: 'Tempo esgotado para responder. Tente novamente!' });
                     }
                 });
             } catch (error) {
