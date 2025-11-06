@@ -16,7 +16,7 @@ const client = new Client({intents:[
 
 const { startBirthdayChecker } = require('./Scripts/britdaycheck');
 
-client.on('clientReady',()=>{
+client.on('ready',()=>{
     console.log(`\n\nLogado como ${client.user.tag}!\n\n`);
     startBirthdayChecker(client);
 });
@@ -38,7 +38,6 @@ for(const folder of commandFolders){
         // Verificar se o comando está na pasta admin e adicionar restrição
        if (folder === 'admin' && command.data) {
             command.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-            command.data.setDefaultMemberPermissions(0);
         }
 
         if('data'in command && 'execute' in command){
@@ -48,6 +47,32 @@ for(const folder of commandFolders){
         }
     }
 }
+
+    //Evento de VoiceTrack
+
+ client.on('voiceStateUpdate', (oldState, newState) => {
+    // Usuário entrou em um canal de voz
+    if (!oldState.channelId && newState.channelId) {
+        voiceTracker.startTracking(newState.member, newState.channelId);
+    }
+    
+    // Usuário saiu de um canal de voz
+    if (oldState.channelId && !newState.channelId) {
+        voiceTracker.stopTracking(oldState.member);
+    }
+    
+    // Usuário mudou de canal (saiu de um e entrou em outro)
+    if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+        voiceTracker.stopTracking(oldState.member);
+        voiceTracker.startTracking(newState.member, newState.channelId);
+    }
+});
+
+// Limpeza periódica de sessões
+setInterval(() => {
+    voiceTracker.cleanup();
+}, 60 * 60 * 1000); // A cada hora
+
 
 //Area de Comandos
 
@@ -77,31 +102,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
         }
     }
 
-    //Evento de VoiceTrack
-
-    client.on('voiceStateUpdate', (oldState, newState) => {
-    // Usuário entrou em um canal de voz
-    if (!oldState.channelId && newState.channelId) {
-        voiceTracker.startTracking(newState.member, newState.channelId);
-    }
-    
-    // Usuário saiu de um canal de voz
-    if (oldState.channelId && !newState.channelId) {
-        voiceTracker.stopTracking(oldState.member);
-    }
-    
-    // Usuário mudou de canal (saiu de um e entrou em outro)
-    if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-        voiceTracker.stopTracking(oldState.member);
-        voiceTracker.startTracking(newState.member, newState.channelId);
-    }
-});
-
-    // Limpeza periódica de sessões
-    setInterval(() => {
-        voiceTracker.cleanup();
-    }, 60 * 60 * 1000); // A cada hora
-
+   
     //Trata os botões e modais atraveis do customID
 
     if(interaction.isButton() && interaction.customId ==='formulario'){ //Manter custom Id padrão!
@@ -143,7 +144,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                 });
                 collector.on('end',collected=>{
                     if(collected.size === 0){
-                        client.channels.send({ content: 'Tempo esgotado para responder. Tente novamente!' });
+                        client.channel.send({ content: 'Tempo esgotado para responder. Tente novamente!' });
                     }
                 });
             } catch (error) {
