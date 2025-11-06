@@ -34,6 +34,12 @@ for(const folder of commandFolders){
     for(const file of commandFiles){
         const filePath = path.join(commandPath,file);
         const command = require(filePath);
+
+        // Verificar se o comando está na pasta admin e adicionar restrição
+       if (folder === 'admin' && command.data) {
+            command.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+        }
+
         if('data'in command && 'execute' in command){
             client.commands.set(command.data.name, command);
         }else{

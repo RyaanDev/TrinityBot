@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, AttachmentBuilder, GuildMember, userMention, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
 const { Canvas, loadImage, registerFont } = require('canvas'); 
 const ColorThief = require('colorthief');
 const axios = require('axios'); 
