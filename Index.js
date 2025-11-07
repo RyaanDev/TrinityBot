@@ -100,6 +100,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                 })
             }
         }
+        return;
     }
 
    
@@ -151,6 +152,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                 console.error('Erro ao lidar com a interação de botão na DM',error);
             }
         }
+        return;
      }
      if(interaction.inGuild()){
       if(interaction.isButton()&& (interaction.customId==='Btn_aprov'||interaction.customId==='Btn_rejei'||interaction.customId==='Btn_penden')){
@@ -207,6 +209,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
                         flags:MessageFlags.Ephemeral
                     });
                     }
+                    return;
         }}else{
                         return;
                     }
