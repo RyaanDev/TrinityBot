@@ -19,7 +19,7 @@ module.exports = {
         const line = new ActionRowBuilder().addComponents(button);
 
         const user = interaction.user;
-        await interaction.reply({content:"Dê uma olhadinha na DM!"});
+        await interaction.reply({content:"Dê uma olhadinha na DM!",ephemeral:true});
         await user.send({
             embeds:[form],
             components:[line],

@@ -106,7 +106,7 @@ client.on(Events.InteractionCreate, async(interaction)=>{
     //Trata os botões e modais atraveis do customID
 
     if(interaction.isButton() && interaction.customId ==='formulario'){ //Manter custom Id padrão!
-        if(interaction.channel.type==1){ // Comando de sugestão!
+        if(interaction.channel && interaction.channel.type === 1){ // Comando de sugestão!
             try {
                 await interaction.reply({
                     content: `Por favor, digite sua sugestão para melhorar o bot e nosso servidor na próxima mensagem!`,
