@@ -16,7 +16,7 @@ const client = new Client({intents:[
 
 const { startBirthdayChecker } = require('./Scripts/britdaycheck');
 
-client.on('ready',()=>{
+client.on('clientReady',()=>{
     console.log(`\n\nLogado como ${client.user.tag}!\n\n`);
     startBirthdayChecker(client);
 });
