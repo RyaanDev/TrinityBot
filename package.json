@@ -21,6 +21,9 @@
     "colorthief": "^2.6.0",
     "discord.js": "^14.23.2",
     "dotenv": "^17.2.3",
+    "ffmpeg": "^0.0.4",
+    "gif-encoder-2": "^1.0.5",
+    "gif-frames": "^1.0.1",
     "node-cron": "^4.2.1"
   }
 }

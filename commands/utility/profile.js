@@ -521,8 +521,6 @@ async function handleProfileEdit(interaction) {
     });
 }
 
-// Função principal para gerar a imagem do perfil (reutilizável)
-// Função principal para gerar a imagem do perfil (reutilizável)
 async function generateProfileImage(interaction, member) {
     const canvas = new Canvas(1055, 650);
     const ctx = canvas.getContext('2d');

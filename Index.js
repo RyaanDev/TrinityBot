@@ -1,17 +1,18 @@
-const{Client, Events, GatewayIntentBits,Collection,MessageFlags, NewsChannel, PermissionFlagsBits } = require(`discord.js`)
+const{Client, Events, GatewayIntentBits,Collection,MessageFlags,ButtonBuilder,ButtonStyle, NewsChannel, PermissionFlagsBits } = require(`discord.js`)
 const path = require('node:path');
 const fs = require('node:fs');
 require('dotenv').config();
 const voiceTracker = require('./Scripts/VoiceTrack');
 const idSuggestion = process.env.IDSUGESTION;
-
+const welcomeSystem = require('./Scripts/WelcomeSystem');
 
 const client = new Client({intents:[
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers
 ]});
 
 const { startBirthdayChecker } = require('./Scripts/britdaycheck');
@@ -48,31 +49,35 @@ for(const folder of commandFolders){
     }
 }
 
-    //Evento de VoiceTrack
+    client.on(Events.GuildMemberAdd, async (member) => {
+        // Enviar mensagem de boas-vindas
+        await welcomeSystem.sendWelcomeMessage(member);
+        
+        // Mantenha outros handlers que você já tenha
+        const command = client.commands.find(cmd => 
+            cmd.handleGuildMemberAdd && typeof cmd.handleGuildMemberAdd === 'function'
+        );
+        if (command) {
+            await command.handleGuildMemberAdd(member);
+        }
+    });
 
- client.on('voiceStateUpdate', (oldState, newState) => {
-    // Usuário entrou em um canal de voz
+    //Evento de VoiceTrack
+    client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+      // Primeiro, chame o voiceTracker
     if (!oldState.channelId && newState.channelId) {
         voiceTracker.startTracking(newState.member, newState.channelId);
     }
     
-    // Usuário saiu de um canal de voz
     if (oldState.channelId && !newState.channelId) {
         voiceTracker.stopTracking(oldState.member);
     }
     
-    // Usuário mudou de canal (saiu de um e entrou em outro)
     if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
         voiceTracker.stopTracking(oldState.member);
         voiceTracker.startTracking(newState.member, newState.channelId);
     }
 });
-
-// Limpeza periódica de sessões
-setInterval(() => {
-    voiceTracker.cleanup();
-}, 60 * 60 * 1000); // A cada hora
-
 
 //Area de Comandos
 
@@ -101,6 +106,16 @@ client.on(Events.InteractionCreate, async(interaction)=>{
             }
         }
         return;
+    }
+
+    // Troca de cargos
+    if (interaction.isButton()) {
+        const command = client.commands.find(cmd => 
+            cmd.handleButton && typeof cmd.handleButton === 'function'
+        );
+        if (command) {
+            await command.handleButton(interaction);
+        }
     }
 
    
@@ -213,7 +228,14 @@ client.on(Events.InteractionCreate, async(interaction)=>{
         }}else{
                         return;
                     }
-                
+        if (interaction.isModalSubmit()) {
+            const command = client.commands.find(cmd => 
+                cmd.handleModal && typeof cmd.handleModal === 'function'
+            );
+            if (command) {
+                await command.handleModal(interaction);
+            }
+        }               
 });
 
 //Token
