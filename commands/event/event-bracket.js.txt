@@ -1,0 +1,219 @@
+const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const eventBracket = require('../../Scripts/Eventbracket');
+const bracketImage = require('../../Scripts/BracketImage'); // ✔ CORRETO
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('event-bracket')
+        .setDescription('Gerenciar torneio')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('create')
+                .setDescription('Criar novo torneio')
+                .addStringOption(option =>
+                    option
+                        .setName('type')
+                        .setDescription('Tipo de torneio')
+                        .setRequired(true)
+                        .addChoices(
+                            { name: 'Times (Automático)', value: 'teams' },
+                            { name: 'Players (Manual)', value: 'players' }
+                        )
+                )
+                .addStringOption(option =>
+                    option
+                        .setName('participants')
+                        .setDescription('Nomes dos participantes separados por vírgula (apenas para players)')
+                        .setRequired(false)
+                )
+                .addBooleanOption(option =>
+                    option
+                        .setName('lower_bracket')
+                        .setDescription('Incluir chave inferior?')
+                        .setRequired(false)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('show')
+                .setDescription('Mostrar chave atual')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset')
+                .setDescription('Reiniciar torneio')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('info')
+                .setDescription('Informações do torneio atual')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('next-round')
+                .setDescription('Avançar para próxima rodada manualmente')
+        ),
+
+    async execute(interaction) {
+        const subcommand = interaction.options.getSubcommand();
+
+        try {
+            switch (subcommand) {
+                case 'create': {
+                    const type = interaction.options.getString('type');
+                    const hasLower = interaction.options.getBoolean('lower_bracket') || false;
+
+                    if (type === 'teams') {
+                        const teams = eventBracket.getAllTeams();
+                        
+                        if (teams.length < 2) {
+                            return await interaction.reply({
+                                content: 'É necessário pelo menos 2 times cadastrados. Use `/event-team` para criar times.',
+                                flags: 64
+                            });
+                        }
+
+                        const bracket = await eventBracket.createTeamBracket(hasLower);
+                        const buffer = await bracketImage.generateImage(bracket); // ✔ CORRETO
+
+                        
+                        await interaction.reply({
+                            content: `**Torneio de Times Criado!**\n**Times:** ${teams.length}\n**Lower Bracket:** ${hasLower ? '✅' : '❌'}\n**Formato:** ${teams.length} times`,
+                            files: [new AttachmentBuilder(buffer, { name: 'team_bracket.png' })]
+                        });
+
+                    } else {
+                        const participantsInput = interaction.options.getString('participants');
+                        if (!participantsInput) {
+                            return await interaction.reply({
+                                content: 'Para torneio de players, é necessário fornecer a lista de participantes.',
+                                flags: 64
+                            });
+                        }
+
+                        const participants = participantsInput
+                            .split(',')
+                            .map(p => p.trim())
+                            .filter(p => p.length > 0);
+
+                        if (participants.length < 2) {
+                            return await interaction.reply({
+                                content: 'É necessário pelo menos 2 participantes.',
+                                flags: 64
+                            });
+                        }
+
+                        const bracket = await eventBracket.createBracket(participants, hasLower, false);
+                        const buffer = await bracketImage.generateImage(bracket); // ✔ CORRETO
+
+                        
+                        await interaction.reply({
+                            content: `**Torneio de Players Criado!**\n**Participantes:** ${participants.length}\n**Lower Bracket:** ${hasLower ? '✅' : '❌'}\n**Formato:** ${participants.length} participantes`,
+                            files: [new AttachmentBuilder(buffer, { name: 'player_bracket.png' })]
+                        });
+                    }
+                    break;
+                }
+
+                case 'show': {
+                    const bracket = await eventBracket.getCurrentBracket();
+                    if (!bracket) {
+                        return await interaction.reply({
+                            content: 'Nenhum torneio ativo. Use `/event-bracket create` para começar.',
+                            flags: 64
+                        });
+                    }
+
+                    const buffer = await bracketImage.generateImage(bracket); // ✔ CORRETO
+                    const type = bracket.isTeamBracket ? 'Times' : 'Players';
+                    
+                    await interaction.reply({
+                        content: `**Chave Atual - ${type}** - Rodada ${bracket.currentRound + 1}`,
+                        files: [new AttachmentBuilder(buffer, { name: 'current_bracket.png' })]
+                    });
+                    break;
+                }
+
+                case 'next-round': {
+                    const bracket = await eventBracket.getCurrentBracket();
+                    if (!bracket) {
+                        return await interaction.reply({
+                            content: 'Nenhum torneio ativo.',
+                            flags: 64
+                        });
+                    }
+
+                    const currentRound = bracket.upper.rounds[bracket.currentRound];
+                    const pendingMatches = currentRound.filter(match => !match.played && match.player1 !== 'NP' && match.player2 !== 'NP');
+                    
+                    if (pendingMatches.length > 0) {
+                        return await interaction.reply({
+                            content: `Ainda há ${pendingMatches.length} partida(s) pendentes nesta rodada.`,
+                            flags: 64
+                        });
+                    }
+
+                    await eventBracket.advanceWinner('__advance__placeholder__');
+
+                    const updatedBracket = await eventBracket.getCurrentBracket();
+                    const buffer = await bracketImage.generateImage(updatedBracket); // ✔ CORRETO
+                    
+                    let content = `**Rodada Avançada!**\n**Nova Rodada:** ${updatedBracket.currentRound + 1}`;
+                    
+                    if (updatedBracket.status === 'completed') {
+                        content += `\n\n🎉 **TORNEIO FINALIZADO!** 🎉\n🏆 **CAMPEÃO:** ${updatedBracket.champion} 🏆`;
+                    }
+
+                    await interaction.reply({
+                        content: content,
+                        files: [new AttachmentBuilder(buffer, { name: 'next_round_bracket.png' })]
+                    });
+                    break;
+                }
+
+                case 'reset': {
+                    await eventBracket.resetBracket();
+                    await interaction.reply({
+                        content: 'Torneio reiniciado com sucesso!',
+                        flags: 0
+                    });
+                    break;
+                }
+
+                case 'info': {
+                    const bracket = await eventBracket.getCurrentBracket();
+                    if (!bracket) {
+                        return await interaction.reply({
+                            content: 'Nenhum torneio ativo.',
+                            flags: 64
+                        });
+                    }
+
+                    const totalMatches = bracket.upper.rounds.flat().length;
+                    const playedMatches = bracket.upper.rounds.flat().filter(m => m.played).length;
+                    const currentRoundMatches = bracket.upper.rounds[bracket.currentRound].filter(m => !m.played && m.player1 !== 'NP' && m.player2 !== 'NP').length;
+                    
+                    await interaction.reply({
+                        content: `**Informações do Torneio**\n` +
+                                `**Tipo:** ${bracket.isTeamBracket ? '🏆 Times' : '👤 Players'}\n` +
+                                `**Status:** ${bracket.status === 'active' ? '🏃 Ativo' : '🏆 Finalizado'}\n` +
+                                `**Participantes:** ${bracket.upper.participants}\n` +
+                                `**Lower Bracket:** ${bracket.hasLower ? '✅' : '❌'}\n` +
+                                `**Rodada Atual:** ${bracket.currentRound + 1}\n` +
+                                `**Partidas Pendentes:** ${currentRoundMatches}\n` +
+                                `**Partidas Totais:** ${playedMatches}/${totalMatches} jogadas\n` +
+                                (bracket.champion ? `**Campeão:** 🏆 ${bracket.champion} 🏆` : ''),
+                        flags: 0
+                    });
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('Erro no comando event-bracket:', error);
+            await interaction.reply({
+                content: 'Ocorreu um erro ao executar o comando.',
+                flags: 64
+            });
+        }
+    }
+};

@@ -1,0 +1,237 @@
+import math
+import random
+import json
+import os
+from typing import List, Dict, Any
+
+class BracketManager:
+    def __init__(self):
+        self.data_file = "database/events.json"
+        self._ensure_data_file()
+    
+    def _ensure_data_file(self):
+        """Garante que o arquivo de dados existe"""
+        os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
+        if not os.path.exists(self.data_file):
+            with open(self.data_file, 'w') as f:
+                json.dump({}, f)
+    
+    def next_power_of_two(self, n: int) -> int:
+        if n <= 1:
+            return 1
+        return 2 ** math.ceil(math.log2(n))
+    
+    def create_bracket(self, participants: List[str], has_lower: bool = False, is_team_bracket: bool = False) -> Dict[str, Any]:
+        if len(participants) < 2:
+            raise ValueError("Mínimo de 2 participantes")
+        
+        # Embaralha participantes
+        shuffled = participants.copy()
+        random.shuffle(shuffled)
+        
+        num_participants = len(shuffled)
+        bracket_size = self.next_power_of_two(num_participants)
+        
+        # Cria chave superior
+        upper_rounds = []
+        current_round = []
+        
+        # Primeira rodada
+        for i in range(0, bracket_size, 2):
+            player1 = shuffled[i] if i < len(shuffled) else "NP"
+            player2 = shuffled[i + 1] if (i + 1) < len(shuffled) else "NP"
+            
+            current_round.append({
+                "player1": player1,
+                "player2": player2,
+                "winner": None,
+                "played": False,
+                "isTeamMatch": is_team_bracket
+            })
+        
+        upper_rounds.append(current_round)
+        
+        # Rodadas seguintes
+        current_size = bracket_size // 2
+        while current_size > 1:
+            next_round = []
+            for i in range(current_size):
+                next_round.append({
+                    "player1": None,
+                    "player2": None,
+                    "winner": None,
+                    "played": False,
+                    "isTeamMatch": is_team_bracket
+                })
+            upper_rounds.append(next_round)
+            current_size = current_size // 2
+        
+        # Cria chave inferior se necessário
+        lower_rounds = []
+        if has_lower:
+            current_size = bracket_size // 2
+            while current_size >= 1:
+                lower_round = []
+                for i in range(current_size):
+                    lower_round.append({
+                        "player1": None,
+                        "player2": None,
+                        "winner": None,
+                        "played": False,
+                        "isTeamMatch": is_team_bracket
+                    })
+                lower_rounds.append(lower_round)
+                current_size = current_size // 2
+        
+        bracket_data = {
+            "upper": {
+                "rounds": upper_rounds,
+                "participants": num_participants,
+                "isTeamBracket": is_team_bracket
+            },
+            "lower": {
+                "rounds": lower_rounds,
+                "participants": num_participants,
+                "isTeamBracket": is_team_bracket
+            } if has_lower else None,
+            "hasLower": has_lower,
+            "isTeamBracket": is_team_bracket,
+            "currentRound": 0,
+            "status": "active",
+            "createdAt": self._get_current_time()
+        }
+        
+        self._save_bracket(bracket_data)
+        return bracket_data
+    
+    def advance_winner(self, winner: str, loser: str) -> Dict[str, Any]:
+        bracket_data = self._load_bracket()
+        if not bracket_data or bracket_data.get("status") != "active":
+            return None
+        
+        current_round_index = bracket_data.get("currentRound", 0)
+        current_round = bracket_data["upper"]["rounds"][current_round_index]
+        
+        match_updated = False
+        for match in current_round:
+            if ((match["player1"] == winner or match["player2"] == winner) and 
+                (match["player1"] == loser or match["player2"] == loser) and 
+                not match["played"]):
+                match["winner"] = winner
+                match["played"] = True
+                match_updated = True
+                break
+        
+        if not match_updated:
+            return None
+        
+        # Verifica se pode avançar de rodada
+        all_matches_played = all(match["played"] for match in current_round)
+        
+        if all_matches_played and current_round_index < len(bracket_data["upper"]["rounds"]) - 1:
+            self._advance_to_next_round(bracket_data)
+        
+        # Verifica se torneio acabou
+        final_round_index = len(bracket_data["upper"]["rounds"]) - 1
+        if (bracket_data["currentRound"] == final_round_index and 
+            all(match["played"] for match in bracket_data["upper"]["rounds"][final_round_index])):
+            bracket_data["status"] = "completed"
+            bracket_data["champion"] = bracket_data["upper"]["rounds"][final_round_index][0]["winner"]
+        
+        self._save_bracket(bracket_data)
+        return bracket_data
+    
+    def _advance_to_next_round(self, bracket_data: Dict[str, Any]):
+        current_round_index = bracket_data["currentRound"]
+        current_round = bracket_data["upper"]["rounds"][current_round_index]
+        next_round = bracket_data["upper"]["rounds"][current_round_index + 1]
+        
+        winners = [match["winner"] for match in current_round]
+        
+        for i in range(0, len(winners), 2):
+            match_index = i // 2
+            if match_index < len(next_round):
+                next_round[match_index]["player1"] = winners[i]
+                if i + 1 < len(winners):
+                    next_round[match_index]["player2"] = winners[i + 1]
+                else:
+                    next_round[match_index]["player2"] = "NP"
+                    next_round[match_index]["winner"] = winners[i]
+                    next_round[match_index]["played"] = True
+        
+        bracket_data["currentRound"] += 1
+    
+    def get_current_matchups(self) -> List[Dict[str, Any]]:
+        bracket_data = self._load_bracket()
+        if not bracket_data or bracket_data.get("status") != "active":
+            return None
+        
+        current_round_index = bracket_data.get("currentRound", 0)
+        current_round = bracket_data["upper"]["rounds"][current_round_index]
+        
+        matchups = []
+        for match_idx, match in enumerate(current_round):
+            if (not match["played"] and 
+                match["player1"] and match["player1"] != "NP" and 
+                match["player2"] and match["player2"] != "NP"):
+                matchups.append({
+                    "matchId": match_idx,
+                    "player1": match["player1"],
+                    "player2": match["player2"],
+                    "winner": None,
+                    "played": False,
+                    "isTeamMatch": bracket_data["isTeamBracket"]
+                })
+        
+        return matchups
+    
+    def get_current_bracket(self) -> Dict[str, Any]:
+        return self._load_bracket()
+    
+    def reset_bracket(self) -> bool:
+        try:
+            if os.path.exists(self.data_file):
+                with open(self.data_file, 'r') as f:
+                    data = json.load(f)
+                
+                if 'current' in data:
+                    del data['current']
+                
+                with open(self.data_file, 'w') as f:
+                    json.dump(data, f, indent=2)
+            
+            return True
+        except Exception as e:
+            return False
+    
+    def _save_bracket(self, bracket_data: Dict[str, Any]):
+        try:
+            if os.path.exists(self.data_file):
+                with open(self.data_file, 'r') as f:
+                    data = json.load(f)
+            else:
+                data = {}
+            
+            data['current'] = bracket_data
+            
+            with open(self.data_file, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            pass
+    
+    def _load_bracket(self) -> Dict[str, Any]:
+        try:
+            if os.path.exists(self.data_file):
+                with open(self.data_file, 'r') as f:
+                    data = json.load(f)
+                return data.get('current')
+            return None
+        except:
+            return None
+    
+    def _get_current_time(self) -> str:
+        from datetime import datetime
+        return datetime.now().isoformat()
+
+# Instância global
+bracket_manager = BracketManager()

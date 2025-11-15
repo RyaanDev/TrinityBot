@@ -1,0 +1,122 @@
+import sys
+import json
+from PIL import Image, ImageDraw, ImageFont
+
+# ===========================
+# Configurações básicas
+# ===========================
+BG_COLOR = (35, 37, 40)
+BLOCK_COLOR = (255, 255, 255)
+TEXT_COLOR = (0, 0, 0)
+LINE_COLOR = (150, 170, 190)
+
+BLOCK_W = 260
+BLOCK_H = 60
+BLOCK_SPACING_Y = 30
+ROUND_SPACING_X = 200
+
+FONT = ImageFont.truetype("arial.ttf", 24)
+
+
+# ===========================
+# Funções auxiliares
+# ===========================
+
+def get_team_name(cpt):
+    """
+    Recebe Competitor convertido para dict pelo Node.
+    Retorna SOMENTE o nome do time.
+    """
+    if not cpt or cpt in ("", None, "NP", "BYE"):
+        return ""
+
+    if isinstance(cpt, str):
+        # strings já tratadas pelo node (ex.: "p1")
+        if cpt.upper() in ("NP", "BYE"):
+            return ""
+        return cpt.strip()
+
+    if isinstance(cpt, dict):
+        # Estrutura gerada pelo bracketool
+        if "team" in cpt and cpt["team"]:
+            return cpt["team"]
+
+    return ""
+
+
+def draw_block(draw, x, y, text):
+    """Desenha um bloco e o texto dentro."""
+    draw.rectangle([x, y, x + BLOCK_W, y + BLOCK_H], fill=BLOCK_COLOR, outline=LINE_COLOR, width=2)
+
+    if text:
+        tw, th = draw.textbbox((0, 0), text, font=FONT)[2:]
+        draw.text(
+            (x + 10, y + (BLOCK_H - th) / 2),
+            text,
+            fill=TEXT_COLOR,
+            font=FONT
+        )
+
+
+# ===========================
+# Renderização principal
+# ===========================
+
+def render_bracket(data):
+    upper = data.get("upper")
+    if not upper:
+        raise ValueError("Bracket inválido: faltando chave 'upper'.")
+
+    rounds = upper.get("rounds", [])
+    num_rounds = len(rounds)
+
+    # Cálculo do tamanho final
+    total_height = len(rounds[0]) * (BLOCK_H + BLOCK_SPACING_Y) + 200
+    total_width = num_rounds * (BLOCK_W + ROUND_SPACING_X) + 200
+
+    img = Image.new("RGB", (total_width, total_height), BG_COLOR)
+    draw = ImageDraw.Draw(img)
+
+    # Título
+    draw.text((40, 30), "CHAVE DO TORNEIO", font=ImageFont.truetype("arial.ttf", 36), fill=(240, 240, 240))
+    draw.text((40, 90), "Rodada 1", font=ImageFont.truetype("arial.ttf", 28), fill=(100, 170, 255))
+
+    start_y = 150
+
+    # Desenhar rounds
+    for r, matches in enumerate(rounds):
+        x = 40 + r * (BLOCK_W + ROUND_SPACING_X)
+
+        for i, match in enumerate(matches):
+            y = start_y + i * (BLOCK_H + BLOCK_SPACING_Y)
+
+            p1 = get_team_name(match.get("p1"))
+            p2 = get_team_name(match.get("p2"))
+
+            # Exibe só se existir nome
+            text = p1 or p2
+            if text:
+                draw_block(draw, x, y, text)
+
+    img.save("render.png")
+    print("PYTHON: render salvo com sucesso!")
+
+
+# ===========================
+# Execução direta pelo Node
+# ===========================
+if __name__ == "__main__":
+    print("PYTHON: iniciando render")
+    raw = sys.stdin.read().strip()
+
+    if not raw:
+        print("PYTHON: stdin vazio")
+        sys.exit(0)
+
+    try:
+        data = json.loads(raw)
+        render_bracket(data)
+    except Exception as e:
+        print("PYTHON ERROR:", e)
+
+    print("PYTHON: done")

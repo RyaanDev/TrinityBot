@@ -5,6 +5,7 @@ require('dotenv').config();
 const voiceTracker = require('./Scripts/VoiceTrack');
 const idSuggestion = process.env.IDSUGESTION;
 const welcomeSystem = require('./Scripts/WelcomeSystem');
+const autoRoleSystem = require('./Scripts/AutoRoleSystem');
 
 const client = new Client({intents:[
     GatewayIntentBits.Guilds,
@@ -52,6 +53,9 @@ for(const folder of commandFolders){
     client.on(Events.GuildMemberAdd, async (member) => {
         // Enviar mensagem de boas-vindas
         await welcomeSystem.sendWelcomeMessage(member);
+        
+        // Aplicar cargo automático
+        await autoRoleSystem.applyAutoRole(member);
         
         // Mantenha outros handlers que você já tenha
         const command = client.commands.find(cmd => 

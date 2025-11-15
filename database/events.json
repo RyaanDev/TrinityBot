@@ -1,1 +1,92 @@
-{}
+{
+  "current": {
+    "upper": {
+      "rounds": [
+        [
+          {
+            "player1": "p5",
+            "player2": "p1",
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": "p3",
+            "player2": "p4",
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": "p2",
+            "player2": "NP",
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": "NP",
+            "player2": "NP",
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          }
+        ],
+        [
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          }
+        ],
+        [
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          },
+          {
+            "player1": null,
+            "player2": null,
+            "winner": null,
+            "played": false,
+            "isTeamMatch": false
+          }
+        ]
+      ],
+      "participants": 5,
+      "isTeamBracket": false
+    },
+    "lower": null,
+    "hasLower": false,
+    "isTeamBracket": false,
+    "currentRound": 0,
+    "status": "active",
+    "createdAt": "2025-11-15T20:04:39.135864"
+  }
+}

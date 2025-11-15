@@ -1,0 +1,161 @@
+const { SlashCommandBuilder, AttachmentBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const eventBracket = require('../../Scripts/Eventbracket');
+const bracketImage = require('../../Scripts/BracketImage');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('event-match')
+        .setDescription('Registrar resultado de partida'),
+
+    async execute(interaction) {
+        const bracket = await eventBracket.getCurrentBracket();
+        
+        if (!bracket) {
+            return await interaction.reply({
+                content: 'Nenhum torneio ativo. Use `/event-bracket create` para começar.',
+                flags: 64
+            });
+        }
+
+        if (bracket.status === 'completed') {
+            return await interaction.reply({
+                content: 'Torneio já finalizado!',
+                flags: 64
+            });
+        }
+
+        const matchups = await eventBracket.getCurrentMatchups();
+        
+        if (!matchups || matchups.length === 0) {
+            return await interaction.reply({
+                content: 'Não há partidas pendentes nesta rodada.',
+                flags: 64
+            });
+        }
+
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('select_match')
+            .setPlaceholder('Selecione uma partida para registrar...')
+            .addOptions(
+                matchups.map(match => ({
+                    label: `${match.player1} vs ${match.player2}`,
+                    description: `Partida ${match.matchId + 1} - ${bracket.isTeamBracket ? 'Times' : 'Players'}`,
+                    value: `match_${match.matchId}`
+                }))
+            );
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+
+        await interaction.reply({
+            content: `**Selecione a partida para registrar o resultado:**`,
+            components: [row]
+        });
+
+        const filter = i => i.customId === 'select_match' && i.user.id === interaction.user.id;
+        const collector = interaction.channel.createMessageComponentCollector({ 
+            filter, 
+            time: 60000 
+        });
+
+        collector.on('collect', async i => {
+            const matchId = parseInt(i.values[0].split('_')[1]);
+            const selectedMatch = matchups[matchId];
+            
+            if (!selectedMatch) {
+                await i.update({ 
+                    content: '❌ Partida não encontrada.', 
+                    components: [] 
+                });
+                return;
+            }
+
+            const winnerRow = new ActionRowBuilder()
+                .addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('select_winner')
+                        .setPlaceholder('Selecione o vencedor...')
+                        .addOptions([
+                            {
+                                label: selectedMatch.player1,
+                                description: `Vencedor: ${selectedMatch.player1}`,
+                                value: `winner_${selectedMatch.player1}_${selectedMatch.player2}`
+                            },
+                            {
+                                label: selectedMatch.player2,
+                                description: `Vencedor: ${selectedMatch.player2}`,
+                                value: `winner_${selectedMatch.player2}_${selectedMatch.player1}`
+                            }
+                        ])
+                );
+
+            await i.update({
+                content: `**Partida Selecionada:** ${selectedMatch.player1} 🆚 ${selectedMatch.player2}\n\n**Selecione o vencedor:**`,
+                components: [winnerRow]
+            });
+
+            const winnerFilter = w => w.customId === 'select_winner' && w.user.id === interaction.user.id;
+            const winnerCollector = interaction.channel.createMessageComponentCollector({ 
+                filter: winnerFilter, 
+                time: 60000 
+            });
+
+            winnerCollector.on('collect', async w => {
+                const [_, winner, loser] = w.values[0].split('_');
+                
+                // Registra o resultado
+                const updatedBracket = await eventBracket.advanceWinner(winner, loser);
+                
+                if (!updatedBracket) {
+                    await w.update({ 
+                        content: 'Erro ao registrar partida.', 
+                        components: [] 
+                    });
+                    return;
+                }
+
+                const buffer = await bracketImage.generateImage(updatedBracket);
+                
+                let content = `✅ **Partida Registrada!**\n` +
+                             `**Partida:** ${selectedMatch.player1} 🆚 ${selectedMatch.player2}\n` +
+                             `**Vencedor:** ${winner}\n` +
+                             `**Perdedor:** ${loser}`;
+                
+                if (updatedBracket.hasLower) {
+                    content += `\n${loser} foi para a **Lower Bracket**`;
+                }
+
+                if (updatedBracket.status === 'completed') {
+                    content += `\n\n**TORNEIO FINALIZADO!**\n🏆 **CAMPEÃO:** ${updatedBracket.champion} 🏆`;
+                }
+
+                await w.update({
+                    content: content,
+                    components: [],
+                    files: [new AttachmentBuilder(buffer, { name: 'updated_bracket.png' })]
+                });
+
+                winnerCollector.stop();
+            });
+
+            winnerCollector.on('end', async (collected, reason) => {
+                if (reason === 'time') {
+                    await interaction.editReply({ 
+                        content: 'Tempo esgotado para selecionar o vencedor.', 
+                        components: [] 
+                    });
+                }
+            });
+
+            collector.stop();
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time') {
+                await interaction.editReply({ 
+                    content: 'Tempo esgotado para selecionar a partida.', 
+                    components: [] 
+                });
+            }
+        });
+    }
+};

@@ -1,0 +1,52 @@
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Usar python do venv
+const PYTHON_PATH = path.join(__dirname, "../.venv/Scripts/python.exe");
+const SCRIPT_PATH = path.join(__dirname, "BracketRenderTool.py");
+const OUTPUT_PATH = path.join(__dirname, "render.png");
+
+module.exports = {
+    generateImage(bracketData) {
+        return new Promise((resolve, reject) => {
+
+            // apagar arquivo antigo
+            if (fs.existsSync(OUTPUT_PATH)) {
+                fs.unlinkSync(OUTPUT_PATH);
+            }
+
+            // executa python COM CWD = Scripts/
+            const python = spawn(PYTHON_PATH, [SCRIPT_PATH], {
+                cwd: __dirname
+            });
+
+            python.stdout.on("data", data => {
+                console.log("PYTHON STDOUT:", data.toString());
+            });
+
+            python.stderr.on("data", data => {
+                console.error("PYTHON STDERR:", data.toString());
+            });
+
+            python.on("close", code => {
+                console.log("Python finalizado com código:", code);
+
+                // verificar arquivo correto
+                if (!fs.existsSync(OUTPUT_PATH)) {
+                    return reject(new Error("render.png NÃO FOI GERADO!"));
+                }
+
+                try {
+                    const buffer = fs.readFileSync(OUTPUT_PATH);
+                    resolve(buffer);
+                } catch (err) {
+                    reject(err);
+                }
+            });
+
+            python.stdin.write(JSON.stringify(bracketData));
+            python.stdin.end();
+        });
+    }
+};
