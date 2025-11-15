@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('welcome-config')
         .setDescription('Configura o sistema de boas-vindas')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        
         
         .addSubcommand(subcommand =>
             subcommand

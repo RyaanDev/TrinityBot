@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('update')
         .setDescription('Cria uma embed de atualização')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        ,
     async execute(interaction) {
 
         const versionInput = new TextInputBuilder()

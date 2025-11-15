@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('cargo-int')
         .setDescription('Configurar cargo automático para novos membros')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')

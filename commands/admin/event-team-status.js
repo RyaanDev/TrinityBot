@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('event-team-status')
         .setDescription('Gerencia as inscrições para times')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        
         .addSubcommand(subcommand =>
             subcommand
                 .setName('open')

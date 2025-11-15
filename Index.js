@@ -31,21 +31,41 @@ const commandFolders = fs.readdirSync(foldersPath);
 
 for(const folder of commandFolders){
     const commandPath = path.join(foldersPath, folder);
-    //Delimita arquivos que sejam '.js'
-    const commandFiles = fs.readdirSync(commandPath).filter((file)=>file.endsWith('.js'));
+    // Delimita arquivos que sejam '.js'
+    const commandFiles = fs.readdirSync(commandPath).filter((file) => file.endsWith('.js'));
+    
     for(const file of commandFiles){
-        const filePath = path.join(commandPath,file);
+        const filePath = path.join(commandPath, file);
         const command = require(filePath);
 
         // Verificar se o comando está na pasta admin e adicionar restrição
-       if (folder === 'admin' && command.data) {
+        if (folder === 'admin' && command.data) {
             command.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+            // Adicionar verificação extra no execute
+            const originalExecute = command.execute;
+            command.execute = async (interaction) => {
+                const suportRoleId = process.env.SUPORT_ID;
+
+                // Verifica se é admin OU tem o cargo de suporte
+                if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && 
+                    !interaction.member.roles.cache.has(suportRoleId)) {
+                    return await interaction.reply({
+                        content: '❌ Você não tem permissão para usar este comando!',
+                        ephemeral: true
+                    });
+                }
+
+                // Executa o comando original se passou na verificação
+                return originalExecute(interaction);
+            };
         }
 
-        if('data'in command && 'execute' in command){
+        // Adiciona o comando à coleção (FORA do if anterior)
+        if('data' in command && 'execute' in command){
             client.commands.set(command.data.name, command);
-        }else{
-            console.log(`[Aviso] o comando ${filePath} falhou em requerer a data ou executar`);
+        } else {
+            console.log(`[Aviso] O comando ${filePath} falhou em requerer a data ou execute`);
         }
     }
 }

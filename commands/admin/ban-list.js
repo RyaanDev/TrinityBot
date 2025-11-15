@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName("ban-list")
         .setDescription("Lista todos os usuários banidos do servidor")
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        ,
 
     async execute(interaction) {
         if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers)) {
