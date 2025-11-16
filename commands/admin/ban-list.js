@@ -7,7 +7,8 @@ module.exports = {
         ,
 
     async execute(interaction) {
-        if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+        const suportRoleId = process.env.SUPORT_ID;
+        if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers)||!interaction.user.id == suportRoleId) {
             return interaction.reply({ 
                 content: "Você não tem permissão para ver a lista de bans!", 
                 ephemeral: true 
