@@ -15,7 +15,7 @@ module.exports = {
                 .setDescription('Motivo do unban')
                 .setRequired(false)
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.BanMembers),
+        .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     async execute(interaction) {
         const userInput = interaction.options.getString('user');

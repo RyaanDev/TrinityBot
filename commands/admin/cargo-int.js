@@ -26,7 +26,8 @@ module.exports = {
             subcommand
                 .setName('status')
                 .setDescription('Ver status atual do cargo automático')
-        ),
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();

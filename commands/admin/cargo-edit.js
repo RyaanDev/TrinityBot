@@ -1,10 +1,10 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('cargo-edit')
         .setDescription('Configura o sistema de cargos por reação')
-        .setDefaultMemberPermissions(0),
+        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
     async execute(interaction) {
         const cargosConfig = [

@@ -21,7 +21,8 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('limpar')
-                .setDescription('Limpa todos os times (cuidado!)')),
+                .setDescription('Limpa todos os times (cuidado!)'))
+                .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
     
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();

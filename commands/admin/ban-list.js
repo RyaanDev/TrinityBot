@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName("ban-list")
         .setDescription("Lista todos os usuários banidos do servidor")
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.BanMembers),
+        .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     async execute(interaction) {
         const suportRoleId = process.env.SUPORT_ID;
