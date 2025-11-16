@@ -76,7 +76,7 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reseta todas as configurações de boas-vindas')
-        ),
+        ).setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();

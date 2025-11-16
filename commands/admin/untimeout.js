@@ -16,7 +16,7 @@ module.exports = {
                 .setDescription('Motivo da remoção do timeout')
                 .setRequired(false)
         )
-        ,
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser('usuario');

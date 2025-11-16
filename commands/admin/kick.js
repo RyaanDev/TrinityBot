@@ -1,6 +1,5 @@
 // commands/admin/kick.js
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("kick")
@@ -16,7 +15,7 @@ module.exports = {
                 .setDescription('Motivo da expulsão')
                 .setRequired(false)
         )
-        ,
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.KickMembers),
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser('usuario');

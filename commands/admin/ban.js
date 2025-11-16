@@ -16,7 +16,7 @@ module.exports = {
         .setRequired(false)
     )
     .setContexts(InteractionContextType.Guild)
-    ,
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator || PermissionFlagsBits.BanMembers),
     async execute(interaction){
         const targetUser = interaction.options.getUser('usuario')
         motivo = interaction.options.getString('motivo')||"Sem motivo definido!";
