@@ -40,7 +40,7 @@ module.exports = {
             banList.forEach((ban, index) => {
                 embed.addFields({
                     name: `${ban.user.tag}`,
-                    value: `**ID:** \`${ban.user.id}\`\n**Motivo:** ${ban.reason || 'Sem motivo registrado'}\n━━━━━━━━━━━━━━━━━━`,
+                    value: `**ID:** \`${ban.user.id}\`\n**Motivo:** ${ban.reason || 'Sem motivo registrado'}\n‧˚₊꒷꒦︶︶︶︶︶꒷꒦︶︶︶︶︶꒦꒷‧₊˚⊹`,
                     inline: false
                 });
             });
