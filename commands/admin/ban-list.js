@@ -44,7 +44,7 @@ module.exports = {
                     inline: false
                 });
             });
-
+//teste de alteração
             await interaction.reply({ embeds: [embed] });
 
         } catch (error) {
